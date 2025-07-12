@@ -1,7 +1,7 @@
 from typing import List
 import torch
 
-from mlp_network import MLPNetwork
+from src.mlp_network import MLPNetwork
 
 
 class EncoderCritic(torch.nn.Module):

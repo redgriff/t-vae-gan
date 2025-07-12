@@ -7,9 +7,9 @@ import torch
 
 from geomloss import SamplesLoss
 
-from encoder_critic import EncoderCritic
-from decoder_generator import DecoderGenerator
-from data_loader import DataLoader
+from src.encoder_critic import EncoderCritic
+from src.decoder_generator import DecoderGenerator
+from src.data_loader import DataLoader
 
 
 class TVAEGANNetwork:
