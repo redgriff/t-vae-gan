@@ -169,16 +169,4 @@ This project is licensed under the Apache License - see the LICENSE file for det
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Citation
-
-If you use this code in your research, please cite:
-
-```bibtex
-@misc{tvaegan2023,
-  title={TVAE-GAN: Variational Autoencoder with GAN for Tabular Data Synthesis},
-  author={Your Name},
-  year={2023},
-  publisher={GitHub},
-  url={https://github.com/yourusername/t-vae-gan}
-}
 ```
