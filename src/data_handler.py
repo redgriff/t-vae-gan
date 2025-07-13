@@ -44,7 +44,7 @@ class DataHandler:
             if len(cat_df.isnull().any(axis=1)) > 0:
                 cat_df = cat_df.fillna(self.none_guid)
 
-            cat_scaler = {"onehot": {}, "minmax": MinMaxScaler([-1, 1], clip=True)}
+            cat_scaler = {"onehot": {}, "minmax": MinMaxScaler((-1, 1), clip=True)}
 
             lst = []
             for column in cat_df.columns:
@@ -64,7 +64,7 @@ class DataHandler:
         num_scaled_np = None
 
         if len(num_df.columns) > 0:
-            num_scaler = MinMaxScaler([-1, 1], clip=True)
+            num_scaler = MinMaxScaler((-1, 1), clip=True)
             num_scaler.fit(num_df)
             num_scaled_np = num_scaler.transform(num_df)
 

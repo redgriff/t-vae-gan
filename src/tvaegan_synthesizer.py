@@ -6,9 +6,9 @@ from sklearn.base import BaseEstimator
 
 import torch
 
-from data_handler import DataHandler
-from data_loader import DataLoader
-from tvaegan_network import TVAEGANNetwork
+from src.data_handler import DataHandler
+from src.data_loader import DataLoader
+from src.tvaegan_network import TVAEGANNetwork
 
 
 class TVAEGANSynthesizer(BaseEstimator):
@@ -16,7 +16,7 @@ class TVAEGANSynthesizer(BaseEstimator):
                  w_regularize: float = 1, w_reconstruct: float = 10, s_generat: int = 5, s_encoder: int = 5,
                  lr_generat: float = 0.00005, lr_critic: float = 0.00005, lr_encoder: float = 0.00005,
                  clip: float = 0.01, dropout: float = 0.1, ot_loss: dict = {"loss": "energy"},
-                 hidden_layers_multiplers: List[int] = [1, 1],
+                 hidden_layers_multipliers: List[int] = [1, 1],
                  shuffle: bool = True):
         super().__init__()
 
@@ -37,7 +37,7 @@ class TVAEGANSynthesizer(BaseEstimator):
         self.dropout = dropout
         self.shuffle = shuffle
         self.ot_loss = ot_loss
-        self.hidden_layers_multipliers = hidden_layers_multiplers
+        self.hidden_layers_multipliers = hidden_layers_multipliers
 
         self.latent_dim: int = None
         self.data_handler: DataHandler = None
