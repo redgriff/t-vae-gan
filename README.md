@@ -169,4 +169,17 @@ This project is licensed under the Apache License - see the LICENSE file for det
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Citation
+
+If you use this code in your research, please cite:
+
+```bibtex
+@article{anshelevich2025synthetic,
+  title={Synthetic tabular data generation using a VAE-GAN architecture},
+  author={Anshelevich, Dmitry and Katz, Gilad},
+  journal={Knowledge-Based Systems},
+  pages={113997},
+  year={2025},
+  publisher={Elsevier}
+}
 ```
