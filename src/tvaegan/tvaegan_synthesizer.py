@@ -8,9 +8,9 @@ from sklearn.base import BaseEstimator
 
 import torch
 
-from src.data_handler import DataHandler
-from src.data_loader import DataLoader
-from src.tvaegan_network import TVAEGANNetwork
+from tvaegan.data_handler import DataHandler
+from tvaegan.data_loader import DataLoader
+from tvaegan.tvaegan_network import TVAEGANNetwork
 
 logger = logging.getLogger(__name__)
 

@@ -8,9 +8,9 @@ import torch
 
 from geomloss import SamplesLoss
 
-from src.encoder_critic import EncoderCritic
-from src.decoder_generator import DecoderGenerator
-from src.data_loader import DataLoader
+from tvaegan.encoder_critic import EncoderCritic
+from tvaegan.decoder_generator import DecoderGenerator
+from tvaegan.data_loader import DataLoader
 
 logger = logging.getLogger(__name__)
 

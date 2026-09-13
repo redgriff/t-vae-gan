@@ -1,6 +1,6 @@
 import logging
 
-from src.tvaegan_synthesizer import TVAEGANSynthesizer
+from tvaegan.tvaegan_synthesizer import TVAEGANSynthesizer
 import pandas as pd
 
 logging.basicConfig(level=logging.INFO)

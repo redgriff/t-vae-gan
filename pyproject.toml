@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tvaegan"
+version = "0.1.0"
+description = "VAE-GAN for synthetic tabular data generation"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [
+    { name = "Dmitry Anshelevich" },
+    { name = "Gilad Katz" },
+]
+keywords = ["synthetic data", "tabular data", "vae", "gan", "pytorch"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "torch",
+    "geomloss>=0.2.4",
+    "scikit-learn>=1.0.0",
+    "pandas>=1.3.0",
+    "numpy>=1.20.0",
+]
+
+[project.optional-dependencies]
+keops = ["pykeops>=1.5"]
+
+[project.urls]
+Repository = "https://github.com/redgriff/t-vae-gan"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tvaegan"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/tvaegan", "README.md", "LICENSE", "pyproject.toml"]

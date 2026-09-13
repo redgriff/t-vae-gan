@@ -1,7 +1,7 @@
 from typing import List
 import torch
 
-from src.mlp_network import MLPNetwork
+from tvaegan.mlp_network import MLPNetwork
 
 
 class DecoderGenerator(torch.nn.Module):

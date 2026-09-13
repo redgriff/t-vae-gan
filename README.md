@@ -27,20 +27,20 @@ All networks use the RMSprop optimizer. Training runs on CUDA when available, ot
 ```bash
 git clone <repository-url>
 cd t-vae-gan
-pip install -r requirements.txt
+pip install -e .
 ```
+
+This installs the `tvaegan` package in editable mode. `pip install -r requirements.txt` additionally installs Jupyter for the example notebook.
 
 PyKeOps does not import on Windows. GeomLoss falls back to plain PyTorch and training still works; the `[KeOps] Warning` messages can be ignored.
 
 ## Quick Start
 
-Run from the repository root (imports use the `src` package):
-
 ```python
 import logging
 
 import pandas as pd
-from src.tvaegan_synthesizer import TVAEGANSynthesizer
+from tvaegan import TVAEGANSynthesizer
 
 logging.basicConfig(level=logging.INFO)  # show training progress
 
@@ -111,18 +111,11 @@ Preprocessing is automatic:
 
 ## Examples
 
-`examples/example.py` trains on the Adult dataset (`examples/adult.csv`) for one epoch and writes `adult_synt.csv`. Run it from the `examples` folder with the repository root on `PYTHONPATH`:
+`examples/example.py` trains on the Adult dataset (`examples/adult.csv`) for one epoch and writes `adult_synt.csv`. After installing the package, run it from the `examples` folder:
 
 ```bash
 cd examples
-PYTHONPATH=.. python example.py
-```
-
-On Windows PowerShell:
-
-```powershell
-cd examples
-$env:PYTHONPATH = ".."; python example.py
+python example.py
 ```
 
 See `examples/example.ipynb` for a walkthrough with visualizations.
