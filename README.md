@@ -21,7 +21,6 @@ All networks use the RMSprop optimizer. Training runs on CUDA when available, ot
 ## Requirements
 
 - Python 3.10 or newer
-- pandas below 3.0: pandas 3 reads text columns with a new `str` dtype, which is not detected as categorical
 
 ## Installation
 
@@ -106,7 +105,7 @@ df_synthetic = synthesizer.predict(1000)
 
 Preprocessing is automatic:
 
-- `object` and `bool` columns are categorical: one-hot encoded, then scaled to [-1, 1]. Missing values are kept and restored.
+- Text (`object` or pandas `str`) and `bool` columns are categorical: one-hot encoded, then scaled to [-1, 1]. Missing values are kept and restored.
 - All other columns are numerical: min-max scaled to [-1, 1]. Numerical columns must not contain missing values.
 - Generated data is converted back to the original column order and dtypes. Float columns are rounded to the precision seen in the training data; `int64` columns are rounded to integers.
 
@@ -134,7 +133,7 @@ See `examples/example.ipynb` for a walkthrough with visualizations.
 - **GeomLoss**: optimal transport losses
 - **PyKeOps**: faster kernel operations for GeomLoss (optional; not available on Windows)
 - **scikit-learn**: preprocessing
-- **pandas** (below 3.0): data handling
+- **pandas**: data handling
 - **NumPy**: numerical computation
 
 ## License

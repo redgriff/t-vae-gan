@@ -159,7 +159,8 @@ class DataHandler:
 
         for column, dtype in zip(df.columns, df.dtypes):
             unique_values = len(df[column].unique())
-            if dtype in [np.dtype("object"), np.dtype("bool")]:
+            # pandas 3 reads text columns as StringDtype instead of object
+            if dtype in [np.dtype("object"), np.dtype("bool")] or isinstance(dtype, pd.StringDtype):
                 cat_columns.append(column)
                 logger.info(f"columns:{column}, type:{dtype}, added: categorical, unique: {unique_values}")
             else:
