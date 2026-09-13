@@ -1,173 +1,149 @@
 # TVAE-GAN: Variational Autoencoder with GAN for Tabular Data Synthesis
 
-A Python implementation of a hybrid model combining Variational Autoencoder (VAE) and Generative Adversarial Network (GAN) for generating synthetic tabular data. This project is designed to create realistic synthetic datasets that preserve the statistical properties and relationships of the original data while ensuring privacy.
+A PyTorch implementation of a hybrid Variational Autoencoder (VAE) and Generative Adversarial Network (GAN) for generating synthetic tabular data. The synthetic data preserves the statistical properties and relationships of the original data without exposing the original rows.
 
 ## Overview
 
-TVAE-GAN combines the strengths of both VAE and GAN architectures:
-- **VAE Component**: Learns a compressed representation of the data and ensures reconstruction quality
-- **GAN Component**: Uses adversarial training to generate more realistic synthetic data
-- **Optimal Transport Loss**: Incorporates geometric loss functions for better distribution matching
+The model has three networks:
 
-## Architecture
+1. **Encoder**: compresses each row into a latent vector.
+2. **Decoder/Generator**: a single network that reconstructs rows from encoded vectors (VAE role) and generates new rows from random noise (GAN role).
+3. **Critic**: scores how realistic a row looks.
 
-The model consists of three main components:
+Training alternates between three steps:
 
-1. **Encoder (VAE)**: Compresses input data into a latent representation
-2. **Generator/Decoder**: Reconstructs data from latent representations
-3. **Critic/Discriminator**: Evaluates the quality of generated samples
+- **Critic** (every batch): learns to score real rows higher than reconstructed and generated rows. Its weights are clipped to `±clip` (WGAN-style).
+- **Generator** (every `s_generat` batches): learns to produce rows the critic scores as real.
+- **Encoder + decoder** (every `s_encoder` batches): learns to reconstruct rows (MSE loss) while an optimal transport loss ([GeomLoss](https://www.kernel-operations.io/geomloss/)) pulls the latent vectors toward a standard normal distribution.
 
-### Key Features
+All networks use the RMSprop optimizer. Training runs on CUDA when available, otherwise on CPU.
 
-- **Mixed Data Types**: Handles both categorical and numerical data automatically
-- **Automatic Preprocessing**: Scales and encodes data appropriately
-- **Configurable Architecture**: Adjustable network sizes and training parameters
-- **Privacy-Preserving**: Generates synthetic data that maintains statistical properties without exposing original data
+## Requirements
+
+- Python 3.10 or newer
+- pandas below 3.0: pandas 3 reads text columns with a new `str` dtype, which is not detected as categorical
 
 ## Installation
 
-1. Clone the repository:
 ```bash
 git clone <repository-url>
 cd t-vae-gan
-```
-
-2. Install dependencies:
-```bash
 pip install -r requirements.txt
 ```
 
+PyKeOps does not import on Windows. GeomLoss falls back to plain PyTorch and training still works; the `[KeOps] Warning` messages can be ignored.
+
 ## Quick Start
 
-### Basic Usage
+Run from the repository root (imports use the `src` package):
 
 ```python
-from src.tvaegan_synthesizer import TVAEGANSynthesizer
+import logging
+
 import pandas as pd
+from src.tvaegan_synthesizer import TVAEGANSynthesizer
 
-# Load your data
-df_real = pd.read_csv('your_data.csv')
+logging.basicConfig(level=logging.INFO)  # show training progress
 
-# Create and train the synthesizer
+df_real = pd.read_csv("your_data.csv")
+
 synthesizer = TVAEGANSynthesizer(epochs=700, batch_size=500)
 synthesizer.fit(df_real)
 
-# Generate synthetic data
 df_synthetic = synthesizer.predict(samples=1000)
-df_synthetic.to_csv('synthetic_data.csv', index=False)
+df_synthetic.to_csv("synthetic_data.csv", index=False)
 ```
 
-### Example with Custom Parameters
-
-```python
-synthesizer = TVAEGANSynthesizer(
-    epochs=700,
-    batch_size=500,
-    cat_emb_size=25,
-    num_emb_size=25,
-    w_regularize=1.0,
-    w_reconstruct=10.0,
-    s_generat=5,
-    s_encoder=5,
-    lr_generat=0.00005,
-    lr_critic=0.00005,
-    lr_encoder=0.00005,
-    clip=0.01,
-    dropout=0.1,
-    hidden_layers_multipliers=[1, 1]
-)
-```
+Progress (column types, network sizes, per-epoch losses) is reported through Python's `logging` module at INFO level. Without `logging.basicConfig(...)` nothing is shown.
 
 ## Parameters
-
-### TVAEGANSynthesizer Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `epochs` | int | 700 | Number of training epochs |
-| `batch_size` | int | 500 | Batch size for training |
-| `cat_emb_size` | int | 25 | Embedding size for categorical features |
-| `num_emb_size` | int | 25 | Embedding size for numerical features |
-| `w_regularize` | float | 1.0 | Weight for regularization loss |
-| `w_reconstruct` | float | 10.0 | Weight for reconstruction loss |
-| `s_generat` | int | 5 | Generator training frequency |
-| `s_encoder` | int | 5 | Encoder training frequency |
+| `batch_size` | int | 500 | Rows per training batch |
+| `cat_emb_size` | int | 25 | Hidden-layer width added per categorical column |
+| `num_emb_size` | int | 25 | Hidden-layer width added per numerical column, capped at the column's number of unique values |
+| `hidden_layers_multipliers` | List[int] | [1, 1] | One entry per hidden layer; each layer's width is the total width above times its multiplier |
+| `w_regularize` | float | 1.0 | Weight of the latent optimal transport loss |
+| `w_reconstruct` | float | 10.0 | Weight of the reconstruction loss |
+| `s_generat` | int | 5 | Train the generator every N batches |
+| `s_encoder` | int | 5 | Train the encoder and decoder every N batches |
 | `lr_generat` | float | 0.00005 | Generator learning rate |
 | `lr_critic` | float | 0.00005 | Critic learning rate |
-| `lr_encoder` | float | 0.00005 | Encoder learning rate |
-| `clip` | float | 0.01 | Gradient clipping value |
-| `dropout` | float | 0.1 | Dropout rate |
-| `ot_loss` | dict | `{"loss": "energy"}` | Optimal transport loss configuration |
-| `hidden_layers_multipliers` | List[int] | [1, 1] | Hidden layer size multipliers |
-| `shuffle` | bool | True | Whether to shuffle data during training |
+| `lr_encoder` | float | 0.00005 | Encoder and decoder learning rate |
+| `clip` | float | 0.01 | Critic weights are clipped to `[-clip, clip]` after each step |
+| `dropout` | float | 0.1 | Dropout rate in all networks |
+| `ot_loss` | dict | `{"loss": "energy"}` | Arguments for GeomLoss `SamplesLoss` |
+| `shuffle` | bool | True | Shuffle rows each epoch |
+| `seed` | int | 42 | Seed for `torch`, `random` and `numpy`, applied when the model is built |
 
-## Data Requirements
+## Reproducible Sampling
 
-The synthesizer automatically handles:
-- **Categorical Data**: Object and boolean types are treated as categorical
-- **Numerical Data**: Integer and float types are treated as numerical
-- **Data Scaling**: Categorical data is one-hot encoded and scaled, numerical data is min-max scaled
+`seed` makes training repeatable. `predict` accepts its own optional `seed`; with it, the same call returns the same rows every time:
 
-## Training Process
+```python
+df_a = synthesizer.predict(1000, seed=7)
+df_b = synthesizer.predict(1000, seed=7)  # identical to df_a
+```
 
-The training involves three components working together:
+Without `seed`, each call continues from the current NumPy random state.
 
-1. **Encoder Training**: Learns to compress data into latent space
-2. **Generator Training**: Learns to generate realistic data from latent space
-3. **Critic Training**: Learns to distinguish real from synthetic data
+## Saving and Loading
 
-The model uses:
-- **RMSprop** optimizer for all components
-- **Optimal Transport Loss** for distribution matching
-- **MSE Loss** for reconstruction
-- **Gradient Clipping** for critic stability
+```python
+synthesizer.save("synthesizer.pt")
+
+synthesizer = TVAEGANSynthesizer.load("synthesizer.pt")
+df_synthetic = synthesizer.predict(1000)
+```
+
+- The file contains the parameters, the fitted preprocessing and the network weights. It does not contain training rows, but it does include column names, each numerical column's min and max, and every category value.
+- A model saved on GPU can be loaded on a CPU-only machine.
+- **Only load files you trust**: `load` unpickles Python objects, which can run arbitrary code.
+
+## Data Handling
+
+Preprocessing is automatic:
+
+- `object` and `bool` columns are categorical: one-hot encoded, then scaled to [-1, 1]. Missing values are kept and restored.
+- All other columns are numerical: min-max scaled to [-1, 1]. Numerical columns must not contain missing values.
+- Generated data is converted back to the original column order and dtypes. Float columns are rounded to the precision seen in the training data; `int64` columns are rounded to integers.
 
 ## Examples
 
-### Adult Dataset Example
+`examples/example.py` trains on the Adult dataset (`examples/adult.csv`) for one epoch and writes `adult_synt.csv`. Run it from the `examples` folder with the repository root on `PYTHONPATH`:
 
-```python
-# Load the adult dataset
-df_real = pd.read_csv('examples/adult.csv')
-
-# Create synthesizer with minimal training for demo
-synthesizer = TVAEGANSynthesizer(epochs=10)
-
-# Train the model
-synthesizer.fit(df_real)
-
-# Generate synthetic data
-df_synthetic = synthesizer.predict(len(df_real))
-df_synthetic.to_csv('adult_synthetic.csv', index=False)
+```bash
+cd examples
+PYTHONPATH=.. python example.py
 ```
 
-### Jupyter Notebook
+On Windows PowerShell:
 
-See `examples/example.ipynb` for a detailed walkthrough with visualizations.
+```powershell
+cd examples
+$env:PYTHONPATH = ".."; python example.py
+```
 
-## Performance Considerations
-
-- **GPU Support**: Automatically uses CUDA if available
-- **Memory Usage**: Batch size affects memory consumption
-- **Training Time**: Depends on dataset size and number of epochs
-- **Quality**: More epochs generally improve synthetic data quality
+See `examples/example.ipynb` for a walkthrough with visualizations.
 
 ## Dependencies
 
-- **PyTorch**: Deep learning framework
-- **GeomLoss**: Optimal transport loss functions
-- **PyKeOps**: Efficient kernel operations
-- **scikit-learn**: Data preprocessing utilities
-- **pandas**: Data manipulation
-- **numpy**: Numerical computations
+- **PyTorch**: deep learning framework
+- **GeomLoss**: optimal transport losses
+- **PyKeOps**: faster kernel operations for GeomLoss (optional; not available on Windows)
+- **scikit-learn**: preprocessing
+- **pandas** (below 3.0): data handling
+- **NumPy**: numerical computation
 
 ## License
 
-This project is licensed under the Apache License - see the LICENSE file for details.
+This project is licensed under the Apache License. See the LICENSE file for details.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome. Please feel free to submit a Pull Request.
 
 ## Citation
 
