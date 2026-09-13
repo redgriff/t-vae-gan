@@ -1,5 +1,9 @@
+import logging
+
 from src.tvaegan_synthesizer import TVAEGANSynthesizer
 import pandas as pd
+
+logging.basicConfig(level=logging.INFO)
 
 df_real = pd.read_csv('adult.csv')
 synthesizer = TVAEGANSynthesizer(epochs=1)

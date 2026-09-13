@@ -1,3 +1,4 @@
+import logging
 import random
 import sys
 from typing import List
@@ -11,6 +12,8 @@ from src.encoder_critic import EncoderCritic
 from src.decoder_generator import DecoderGenerator
 from src.data_loader import DataLoader
 
+logger = logging.getLogger(__name__)
+
 
 class TVAEGANNetwork:
     def __init__(self, in_size: int, hidden_sizes: List[int], latent_dim: int, cat_size: int, num_size: int,
@@ -19,7 +22,7 @@ class TVAEGANNetwork:
 
         self._set_seed(seed)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        print(device)
+        logger.info(device)
 
         self.device = device
         self.dropout = dropout
@@ -38,8 +41,8 @@ class TVAEGANNetwork:
             device=self.device, 
             is_vae=True
         ).to(self.device)
-        print(f"encoder total params {sum(p.numel() for p in self.encoder.parameters())}")
-        print(f"encoder total trainable params {sum(p.numel() for p in self.encoder.parameters() if p.requires_grad)}")
+        logger.info(f"encoder total params {sum(p.numel() for p in self.encoder.parameters())}")
+        logger.info(f"encoder total trainable params {sum(p.numel() for p in self.encoder.parameters() if p.requires_grad)}")
 
         self.generat = DecoderGenerator(
             in_size=latent_dim, 
@@ -51,8 +54,8 @@ class TVAEGANNetwork:
             device=self.device
         ).to(self.device)
 
-        print(f"generat total params {sum(p.numel() for p in self.generat.parameters())}")
-        print(f"generat total trainable params {sum(p.numel() for p in self.generat.parameters() if p.requires_grad)}")
+        logger.info(f"generat total params {sum(p.numel() for p in self.generat.parameters())}")
+        logger.info(f"generat total trainable params {sum(p.numel() for p in self.generat.parameters() if p.requires_grad)}")
 
         self.critic = EncoderCritic(
             in_size=in_size, 
@@ -63,8 +66,8 @@ class TVAEGANNetwork:
             is_vae=False
         ).to(self.device)
 
-        print(f"critic total params {sum(p.numel() for p in self.critic.parameters())}")
-        print(f"critic total trainable params {sum(p.numel() for p in self.critic.parameters() if p.requires_grad)}")
+        logger.info(f"critic total params {sum(p.numel() for p in self.critic.parameters())}")
+        logger.info(f"critic total trainable params {sum(p.numel() for p in self.critic.parameters() if p.requires_grad)}")
 
         self.encoder_optim: torch.optim.RMSprop = None # type: ignore
         self.decoder_optim: torch.optim.RMSprop = None # type: ignore
@@ -130,7 +133,7 @@ class TVAEGANNetwork:
                 "critic_loss_avg": critic_loss_avg,
                 "generat_loss_avg": generat_loss_avg,
             }
-            print(metrics)
+            logger.info(metrics)
 
     def _encoder_step(self, batch_size, x):
         self.encoder_optim.zero_grad()

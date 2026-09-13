@@ -1,4 +1,5 @@
 import io
+import logging
 from copy import deepcopy
 from typing import List
 import numpy as np
@@ -10,6 +11,8 @@ import torch
 from src.data_handler import DataHandler
 from src.data_loader import DataLoader
 from src.tvaegan_network import TVAEGANNetwork
+
+logger = logging.getLogger(__name__)
 
 
 class TVAEGANSynthesizer(BaseEstimator):
@@ -49,7 +52,7 @@ class TVAEGANSynthesizer(BaseEstimator):
         self.data_handler = DataHandler()
         scaled_np = self.data_handler.transform(df)
         df_reversed = self.data_handler.reverse(deepcopy(scaled_np))
-        print(df.compare(df_reversed))
+        logger.info(df.compare(df_reversed))
 
         cat_sizes = self.data_handler.get_cat_sizes()
         num_sizes = self.data_handler.get_num_sizes()
@@ -57,17 +60,17 @@ class TVAEGANSynthesizer(BaseEstimator):
         num_size_sum = sum([min(self.num_emb_size, num_size) for num_size in num_sizes])
 
         vec_total_length = cat_size_sum + num_size_sum
-        print(f"vec_total_length: {vec_total_length}")
+        logger.info(f"vec_total_length: {vec_total_length}")
 
         in_size = sum(cat_sizes) + len(num_sizes)
-        print(f"in_size: {in_size}")
+        logger.info(f"in_size: {in_size}")
 
         hidden_layers_sizes = [int(vec_total_length * hidden_layer_multiplier)
                                for hidden_layer_multiplier in self.hidden_layers_multipliers]
-        print(f"hidden_layers_sizes: {hidden_layers_sizes}")
+        logger.info(f"hidden_layers_sizes: {hidden_layers_sizes}")
 
         self.latent_dim = len(df.columns)
-        print(f"latent_dim: {self.latent_dim}")
+        logger.info(f"latent_dim: {self.latent_dim}")
 
         self.model = TVAEGANNetwork(
             in_size=in_size, 

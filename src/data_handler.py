@@ -1,4 +1,5 @@
 import decimal
+import logging
 import uuid
 from typing import List
 
@@ -7,6 +8,8 @@ import pandas as pd
 
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import LabelBinarizer
+
+logger = logging.getLogger(__name__)
 
 ONEHOT = "onehot"
 MINMAX = "minmax"
@@ -158,9 +161,9 @@ class DataHandler:
             unique_values = len(df[column].unique())
             if dtype in [np.dtype("object"), np.dtype("bool")]:
                 cat_columns.append(column)
-                print(f"columns:{column}, type:{dtype}, added: categorical, unique: {unique_values}")
+                logger.info(f"columns:{column}, type:{dtype}, added: categorical, unique: {unique_values}")
             else:
                 num_columns.append(column)
-                print(f"columns:{column}, type:{dtype}, added: numerical, unique: {unique_values}")
+                logger.info(f"columns:{column}, type:{dtype}, added: numerical, unique: {unique_values}")
 
         return cat_columns, num_columns
