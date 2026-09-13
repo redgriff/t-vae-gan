@@ -8,33 +8,45 @@ import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import LabelBinarizer
 
+ONEHOT = "onehot"
+MINMAX = "minmax"
+
 
 class DataHandler:
-    def __init__(self, df: pd.DataFrame):
-        self.org_df: pd.DataFrame = df
+    def __init__(self):
+        self._cat_scaler: dict = None  # type: ignore
+        self._cat_columns: List[str] = None  # type: ignore
 
-        self._cat_scaler = None
-        self._cat_columns = None
-        self._cat_scaled_np = None
+        self._num_scaler: MinMaxScaler = None  # type: ignore
+        self._num_columns: List[str] = None  # type: ignore
 
-        self._num_scaler = None
-        self._num_columns = None
-        self._num_scaled_np = None
+        self._columns: List[str] = None  # type: ignore
+        self._dtypes: List[np.dtype] = None  # type: ignore
+        self._num_unique: dict[str, int] = None  # type: ignore
+        self._decimal_digits: dict[str, int] = None  # type: ignore
 
         self.none_guid = str(uuid.uuid4())
 
-    def transform(self):
-        self._cat_columns, self._num_columns = self._get_cat_num(self.org_df)
+    def transform(self, df: pd.DataFrame) -> np.ndarray:
+        self._cat_columns, self._num_columns = self._get_cat_num(df)
 
-        self._cat_scaler, self._cat_scaled_np = self._scale_categoricals(self.org_df[self._cat_columns])
-        self._num_scaler, self._num_scaled_np, = self._scale_numericals(self.org_df[self._num_columns])
+        # df and its scaled arrays are not stored (keeps training rows out of saved models);
+        # keep only what reverse() and get_num_sizes() need
+        self._columns = list(df.columns)
+        self._dtypes = list(df.dtypes)
+        self._num_unique = {column: len(df[column].unique()) for column in self._num_columns}
+        self._decimal_digits = {column: self._get_max_decimal_digit(list(df[column]))  # type: ignore
+                                for column, dtype in zip(self._columns, self._dtypes) if dtype == np.dtype("float")}
 
-        if self._cat_scaled_np is not None and self._num_scaled_np is not None:
-            scaled_np = np.concatenate([self._cat_scaled_np, self._num_scaled_np], axis=1)
+        self._cat_scaler, cat_scaled_np = self._scale_categoricals(df[self._cat_columns])  # type: ignore
+        self._num_scaler, num_scaled_np, = self._scale_numericals(df[self._num_columns])  # type: ignore
+
+        if cat_scaled_np is not None and num_scaled_np is not None:
+            scaled_np = np.concatenate([cat_scaled_np, num_scaled_np], axis=1)
         else:
-            scaled_np = self._cat_scaled_np if self._cat_scaled_np is not None else self._num_scaled_np
+            scaled_np = cat_scaled_np if cat_scaled_np is not None else num_scaled_np
 
-        return scaled_np
+        return scaled_np  # type: ignore
 
     def _scale_categoricals(self, cat_df):
         cat_scaled_np = None
@@ -44,18 +56,18 @@ class DataHandler:
             if len(cat_df.isnull().any(axis=1)) > 0:
                 cat_df = cat_df.fillna(self.none_guid)
 
-            cat_scaler = {"onehot": {}, "minmax": MinMaxScaler((-1, 1), clip=True)}
+            cat_scaler = {ONEHOT: {}, MINMAX: MinMaxScaler((-1, 1), clip=True)}
 
             lst = []
             for column in cat_df.columns:
-                cat_scaler["onehot"][column] = LabelBinarizer()
-                cat_scaler["onehot"][column].fit(cat_df[column])
-                lst.append(cat_scaler["onehot"][column].transform(cat_df[column]))
+                cat_scaler[ONEHOT][column] = LabelBinarizer()
+                cat_scaler[ONEHOT][column].fit(cat_df[column])
+                lst.append(cat_scaler[ONEHOT][column].transform(cat_df[column]))
 
             cat_scaled_np = np.concatenate(lst, axis=1)
 
-            cat_scaler["minmax"].fit(cat_scaled_np)
-            cat_scaled_np = cat_scaler["minmax"].transform(cat_scaled_np)
+            cat_scaler[MINMAX].fit(cat_scaled_np)
+            cat_scaled_np = cat_scaler[MINMAX].transform(cat_scaled_np)
 
         return cat_scaler, cat_scaled_np
 
@@ -73,8 +85,8 @@ class DataHandler:
     def get_cat_sizes(self):
         cat_sizes = []
         if len(self._cat_columns) > 0:
-            for column in self._cat_scaler["onehot"]:
-                size = len(self._cat_scaler["onehot"][column].classes_)
+            for column in self._cat_scaler[ONEHOT]:
+                size = len(self._cat_scaler[ONEHOT][column].classes_)
                 cat_sizes.append(size if size > 2 else 1)
 
         return cat_sizes
@@ -83,7 +95,7 @@ class DataHandler:
         num_sizes = []
         if len(self._num_columns) > 0:
             for num_column in self._num_columns:
-                num_sizes.append(len(self.org_df[num_column].unique()))
+                num_sizes.append(self._num_unique[num_column])
 
         return num_sizes
 
@@ -92,7 +104,7 @@ class DataHandler:
 
         cat_rev_df = None
         if len(self.get_cat_sizes()) > 0:
-            cat_rev_np = self._cat_scaler["minmax"].inverse_transform(cat_scaled_np)
+            cat_rev_np = self._cat_scaler[MINMAX].inverse_transform(cat_scaled_np)
 
             cat_sizes = self.get_cat_sizes()
             indices_or_sections = [cat_sizes[0]]
@@ -104,8 +116,8 @@ class DataHandler:
             cat_columns_np = cat_columns_np[:-1]
 
             lst = []
-            for column_name, cat_column_np in zip(self._cat_scaler["onehot"], cat_columns_np):
-                lst.append(self._cat_scaler["onehot"][column_name].inverse_transform(cat_column_np))
+            for column_name, cat_column_np in zip(self._cat_scaler[ONEHOT], cat_columns_np):
+                lst.append(self._cat_scaler[ONEHOT][column_name].inverse_transform(cat_column_np))
             cat_columns_rev_np = np.stack(lst, axis=1)
             cat_rev_df = pd.DataFrame(cat_columns_rev_np, columns=self._cat_columns)
             cat_rev_df = cat_rev_df.replace(self.none_guid, np.nan)
@@ -116,10 +128,10 @@ class DataHandler:
 
         rev_df = pd.concat(list(filter(None.__ne__, [cat_rev_df, num_rev_df])), axis=1)
 
-        rev_df = rev_df[self.org_df.columns]
-        for column, org_dtype in zip(self.org_df.columns, self.org_df.dtypes):
+        rev_df = rev_df[self._columns]
+        for column, org_dtype in zip(self._columns, self._dtypes):
             if org_dtype == np.dtype("float"):
-                decimal_digit = self._get_max_decimal_digit(list(self.org_df[column]))
+                decimal_digit = self._decimal_digits[column]
                 rev_df[column] = rev_df[column].apply(lambda x: round(x, decimal_digit))
             if org_dtype == np.dtype("int64"):
                 rev_df[column] = rev_df[column].apply(lambda x: round(x))

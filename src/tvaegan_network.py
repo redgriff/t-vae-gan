@@ -15,9 +15,9 @@ from src.data_loader import DataLoader
 class TVAEGANNetwork:
     def __init__(self, in_size: int, hidden_sizes: List[int], latent_dim: int, cat_size: int, num_size: int,
                  w_regularize: float, w_reconstruct: float, s_generat: float, s_encoder: float, clip: float,
-                 dropout: float, ot_loss: dict):
+                 dropout: float, ot_loss: dict, seed: int):
 
-        self._set_seed()
+        self._set_seed(seed)
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print(device)
 
@@ -30,34 +30,52 @@ class TVAEGANNetwork:
         self.s_encoder = s_encoder
         self.clip = clip
 
-        self.encoder = EncoderCritic(in_size=in_size, hidden_dims=hidden_sizes, out_size=latent_dim,
-                                     dropout=self.dropout, device=self.device, is_vae=True).to(self.device)
+        self.encoder = EncoderCritic(
+            in_size=in_size, 
+            hidden_dims=hidden_sizes, 
+            out_size=latent_dim,
+            dropout=self.dropout, 
+            device=self.device, 
+            is_vae=True
+        ).to(self.device)
         print(f"encoder total params {sum(p.numel() for p in self.encoder.parameters())}")
         print(f"encoder total trainable params {sum(p.numel() for p in self.encoder.parameters() if p.requires_grad)}")
 
-        self.generat = DecoderGenerator(in_size=latent_dim, hidden_dims=hidden_sizes[::-1], out_size=in_size,
-                                        cat_size=cat_size, num_size=num_size,
-                                        dropout=self.dropout, device=self.device).to(self.device)
+        self.generat = DecoderGenerator(
+            in_size=latent_dim, 
+            hidden_dims=hidden_sizes[::-1], 
+            out_size=in_size,
+            cat_size=cat_size, 
+            num_size=num_size,
+            dropout=self.dropout, 
+            device=self.device
+        ).to(self.device)
 
         print(f"generat total params {sum(p.numel() for p in self.generat.parameters())}")
         print(f"generat total trainable params {sum(p.numel() for p in self.generat.parameters() if p.requires_grad)}")
 
-        self.critic = EncoderCritic(in_size=in_size, hidden_dims=hidden_sizes, out_size=1,
-                                    dropout=self.dropout, device=self.device).to(self.device)
+        self.critic = EncoderCritic(
+            in_size=in_size, 
+            hidden_dims=hidden_sizes, 
+            out_size=1,
+            dropout=self.dropout,
+            device=self.device,
+            is_vae=False
+        ).to(self.device)
 
         print(f"critic total params {sum(p.numel() for p in self.critic.parameters())}")
         print(f"critic total trainable params {sum(p.numel() for p in self.critic.parameters() if p.requires_grad)}")
 
-        self.encoder_optim: torch.optim.RMSprop = None
-        self.decoder_optim: torch.optim.RMSprop = None
-        self.generat_optim: torch.optim.RMSprop = None
-        self.critic_optim: torch.optim.RMSprop = None
+        self.encoder_optim: torch.optim.RMSprop = None # type: ignore
+        self.decoder_optim: torch.optim.RMSprop = None # type: ignore
+        self.generat_optim: torch.optim.RMSprop = None # type: ignore
+        self.critic_optim: torch.optim.RMSprop = None # type: ignore
 
         self.loss_regularize = SamplesLoss(**ot_loss)
         self.loss_restore = torch.nn.MSELoss()
         self.loss_critic = torch.nn.MSELoss()
 
-    def _set_seed(self, seed: int = 42):
+    def _set_seed(self, seed: int):
         torch.manual_seed(seed)
         random.seed(seed)
         np.random.seed(seed)
@@ -87,7 +105,7 @@ class TVAEGANNetwork:
             for step, rows in enumerate(data_loader):
                 batch_size = rows[0].shape[0]
                 x = rows[0]
-                x = x.type(torch.FloatTensor).to(self.device)
+                x = x.type(torch.float32).to(self.device)
 
                 if self.s_generat != sys.maxsize:
                     critic_loss = self._critic_step(batch_size, x)
@@ -190,7 +208,7 @@ class TVAEGANNetwork:
 
     def generate(self, z):
         with torch.no_grad():
-            z = torch.from_numpy(z).type(torch.FloatTensor).to(self.device)
+            z = torch.from_numpy(z).type(torch.float32).to(self.device)
             z_out = self.generat(z)
 
             out = z_out.detach().cpu().numpy()
@@ -208,7 +226,11 @@ class TVAEGANNetwork:
         )
 
     def load(self, path):
-        checkpoint = torch.load(path)
+        checkpoint = torch.load(path, map_location=self.device)
         self.encoder.load_state_dict(checkpoint["encoder_state_dict"])
         self.generat.load_state_dict(checkpoint["decoder_state_dict"])
         self.critic.load_state_dict(checkpoint["critic_state_dict"])
+
+        self.encoder.train(False)
+        self.generat.train(False)
+        self.critic.train(False)

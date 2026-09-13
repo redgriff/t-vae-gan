@@ -2,7 +2,7 @@ import torch
 
 
 class DataLoader:
-    def __init__(self, *tensors, batch_size: int = 32, shuffle: bool = False):
+    def __init__(self, *tensors, batch_size: int, shuffle: bool):
         self.tensors = tensors
         self.data_len = self.tensors[0].shape[0]
         self.batch_size = batch_size

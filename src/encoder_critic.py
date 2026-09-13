@@ -5,14 +5,19 @@ from src.mlp_network import MLPNetwork
 
 
 class EncoderCritic(torch.nn.Module):
-    def __init__(self, in_size: int, hidden_dims: List[int], out_size: int, dropout: float, device=None, is_vae=False):
+    def __init__(self, in_size: int, hidden_dims: List[int], out_size: int, dropout: float, is_vae: bool, device=None):
         super(EncoderCritic, self).__init__()
 
         self.device = device
         self.is_vae = is_vae
 
-        self.network = MLPNetwork(in_size=in_size, hidden_sizes=hidden_dims, out_size=out_size, device=device,
-                                  dropout=dropout).to(device=self.device)
+        self.network = MLPNetwork(
+            in_size=in_size, 
+            hidden_sizes=hidden_dims, 
+            out_size=out_size,
+            dropout=dropout, 
+            device=device
+        ).to(device=self.device)
 
         self.mu_fc = torch.nn.Linear(out_size, out_size).to(device=device)
         self.sigma_fc = torch.nn.Linear(out_size, out_size).to(device=device)
